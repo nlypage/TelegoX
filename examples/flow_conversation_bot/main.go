@@ -7,10 +7,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/mymmrac/telego"
-	tf "github.com/mymmrac/telego/telegoflow"
-	th "github.com/mymmrac/telego/telegohandler"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	tf "github.com/nlypage/telegox/telegoflow"
+	th "github.com/nlypage/telegox/telegohandler"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 // UserData is typed session data shared between flow steps.
