@@ -1,37 +1,30 @@
-# Telego • Go Telegram Bot API
+# TelegoX • Go Telegram Bot API
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/mymmrac/telego#section-readme.svg)](https://pkg.go.dev/github.com/mymmrac/telego)
-[![Telego Docs](https://img.shields.io/static/v1?label=Telego&message=docs&color=8ed6fb&logo=hugo)](https://telego.pixelbox.dev)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/mymmrac/telego?logo=go)](go.mod)
+> TelegoX is an independent, community-supported fork of Telego, focused on openness,
+> User-friendliness, modern features, and API support for Telegram bots.
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/nlypage/telegox#section-readme.svg)](https://pkg.go.dev/github.com/nlypage/telegox)
+[![TelegoX Docs](https://img.shields.io/static/v1?label=TelegoX&message=docs&color=8ed6fb&logo=hugo)](docs)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/nlypage/telegox?logo=go)](go.mod)
 [![Telegram Bot API Version][TelegramVersionBadge]][TelegramLastVersion]
 <br>
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mymmrac/telego)
-[![Discussions](https://img.shields.io/github/discussions/mymmrac/telego?color=58a6ff&label=Discussions&logo=github)](https://github.com/mymmrac/telego/discussions)
-[![Telegram Chat](https://img.shields.io/static/v1?label=Discussion&message=chat&color=29a1d4&logo=telegram)](https://t.me/telegoLibrary)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/nlypage/telegox)
+[![Discussions](https://img.shields.io/github/discussions/nlypage/telegox?color=58a6ff&label=Discussions&logo=github)](https://github.com/nlypage/telegox/discussions)
 
-[![CI Status](https://github.com/mymmrac/telego/actions/workflows/ci.yml/badge.svg)](https://github.com/mymmrac/telego/actions/workflows/ci.yml)
-[![Race Testing](https://github.com/mymmrac/telego/actions/workflows/race-tests.yml/badge.svg)](https://github.com/mymmrac/telego/actions/workflows/race-tests.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=mymmrac_telego&metric=alert_status)](https://sonarcloud.io/dashboard?id=mymmrac_telego)
-[![Go Report](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/mymmrac/telego)
-<br>
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=mymmrac_telego&metric=coverage)](https://sonarcloud.io/dashboard?id=mymmrac_telego)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=mymmrac_telego&metric=code_smells)](https://sonarcloud.io/dashboard?id=mymmrac_telego)
-[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=mymmrac_telego&metric=ncloc)](https://sonarcloud.io/dashboard?id=mymmrac_telego)
+[![CI Status](https://github.com/nlypage/telegox/actions/workflows/ci.yml/badge.svg)](https://github.com/nlypage/telegox/actions/workflows/ci.yml)
+[![Race Testing](https://github.com/nlypage/telegox/actions/workflows/race-tests.yml/badge.svg)](https://github.com/nlypage/telegox/actions/workflows/race-tests.yml)
+[![Go Report](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/nlypage/telegox)
 
-<p align="center">
-  <img src="docs/logo/telego-long.png" alt="Telego logo" width="512px" style="border-radius: 12px;">
-</p>
-
-Telego is a Telegram Bot API library for Golang with full [API][TelegramBotAPI] implementation (one-to-one)
+TelegoX is a Telegram Bot API library for Golang with full [API][TelegramBotAPI] implementation (one-to-one)
 
 The goal of this library was to create API with the same types and methods as actual Telegram Bot API.
 Every type and method have been represented in [`types.go`](types.go) and [`methods.go`](methods.go) files with mostly
 all documentation from Telegram.
 
-For more detailed documentation, see docs at [telego.pixelbox.dev](https://telego.pixelbox.dev).
+For more detailed documentation, see [docs](docs).
 
-> Note: Telego uses [fasthttp](https://github.com/valyala/fasthttp) instead of `net/http`
+> Note: TelegoX uses [fasthttp](https://github.com/valyala/fasthttp) instead of `net/http`
 > and [go-json](https://github.com/goccy/go-json) instead of `encoding/json` by default (both can be changed).
 
 ### :clipboard: Table Of Content
@@ -58,7 +51,7 @@ For more detailed documentation, see docs at [telego.pixelbox.dev](https://teleg
 How to get the library:
 
 ```shell
-go get github.com/mymmrac/telego
+go get github.com/nlypage/telegox
 ```
 
 Make sure you get the latest version to have all new features and fixes.
@@ -76,7 +69,6 @@ More examples can be seen here:
 - [Ngrok webhook](examples/ngrok/main.go)
 - [Echo bot](examples/echo_bot/main.go)
 - [Echo bot (with handlers)](examples/echo_bot_with_handlers/main.go)
-- [Echo bot (handlers + webhook + graceful shutdown + docker)](https://github.com/mymmrac/echo-bot)
 - [Conversation bot (state machine)](examples/conversation_bot/main.go)
 - [Flow conversation bot (telegoflow)](examples/flow_conversation_bot/main.go)
 - [Sending files (documents, photos, media groups)](examples/sending_files/main.go)
@@ -130,7 +122,7 @@ Generally, useful information about Telegram Bots and their features:
 
 ### :jigsaw: Basic setup
 
-[▲ Go Up ▲](#telego--go-telegram-bot-api)
+[▲ Go Up ▲](#telegox--go-telegram-bot-api)
 
 For start, you need to create an instance of your bot and
 specify [token](https://core.telegram.org/bots/api#authorizing-your-bot).
@@ -143,7 +135,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mymmrac/telego"
+	"github.com/nlypage/telegox"
 )
 
 func main() {
@@ -173,7 +165,7 @@ func main() {
 
 ### :envelope_with_arrow: Getting updates
 
-[▲ Go Up ▲](#telego--go-telegram-bot-api)
+[▲ Go Up ▲](#telegox--go-telegram-bot-api)
 
 To receive updates, you can use one of two methods:
 
@@ -190,7 +182,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mymmrac/telego"
+	"github.com/nlypage/telegox"
 )
 
 func main() {
@@ -226,7 +218,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/mymmrac/telego"
+	"github.com/nlypage/telegox"
 )
 
 func main() {
@@ -276,14 +268,14 @@ For running multiple bots from a single server, see [this](examples/multi_bot_we
 > Tip: For testing webhooks locally, you can use [Ngrok](https://ngrok.com) to make a tunnel to your localhost,
 > and get a random domain available from the Internet.
 > It's as simple as `ngrok http 8080`.
-> Or follow [Telego + Ngrok example](examples/ngrok/main.go) using [ngrok/ngrok-go](https://github.com/ngrok/ngrok-go)
+> Or follow [TelegoX + Ngrok example](examples/ngrok/main.go) using [ngrok/ngrok-go](https://github.com/ngrok/ngrok-go)
 > for most convenient bot testing.
 
 > Tip: You may wish to use [Let's Encrypt](https://letsencrypt.org) in order to generate your free TLS certificate.
 
 ### :kite: Using Telegram methods
 
-[▲ Go Up ▲](#telego--go-telegram-bot-api)
+[▲ Go Up ▲](#telegox--go-telegram-bot-api)
 
 All Telegram Bot API methods described in [documentation](https://core.telegram.org/bots/api#available-methods) can be
 used by the library. They have the same names and the same parameters, parameters represented by struct with
@@ -301,8 +293,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mymmrac/telego"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 func main() {
@@ -346,16 +338,16 @@ func main() {
 
 ### :soap: Utility methods
 
-[▲ Go Up ▲](#telego--go-telegram-bot-api)
+[▲ Go Up ▲](#telegox--go-telegram-bot-api)
 
-In Telego even though you have all [`types`](types.go) and [`methods`](methods.go) available, it's often not so
+In TelegoX even though you have all [`types`](types.go) and [`methods`](methods.go) available, it's often not so
 convenient to use them directly. To solve this issues [`telegoutil`](telegoutil) package was created. It contains
 utility-helper function that will make your life a bit easier.
 
 I suggest including it with alias to get cleaner code:
 
 ```go
-import tu "github.com/mymmrac/telego/telegoutil"
+import tu "github.com/nlypage/telegox/telegoutil"
 ```
 
 The package contains couple methods for creating send parameters with all required parameters like:
@@ -380,7 +372,7 @@ Utils related to [`methods`](methods.go) can be found in [`telegoutil/methods`](
 
 ### :mechanical_arm: Helper `With...` methods
 
-[▲ Go Up ▲](#telego--go-telegram-bot-api)
+[▲ Go Up ▲](#telegox--go-telegram-bot-api)
 
 Creating method parameters is sometimes bulky and not convenient, so you can use `with` methods in combination with
 `utility` methods.
@@ -391,8 +383,8 @@ Here is a simple example of creating a message with a keyboard that has 4 button
 package main
 
 import (
-	"github.com/mymmrac/telego"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 func main() {
@@ -433,9 +425,9 @@ one to another to update multiple values.
 
 ### :sun_behind_large_cloud: Bot handlers
 
-[▲ Go Up ▲](#telego--go-telegram-bot-api)
+[▲ Go Up ▲](#telegox--go-telegram-bot-api)
 
-Processing updates just in for loop is not the most pleasing thing to do, so Telego provides `net/http` like handlers,
+Processing updates just in for loop is not the most pleasing thing to do, so TelegoX provides `net/http` like handlers,
 but instead of the path, you provide predicates.
 
 One update will only match to the first handler whose predicates are satisfied, predicates checked in order of handler
@@ -446,7 +438,7 @@ Also, all handlers (but not their predicates) are processed in parallel.
 I suggest including it with alias to get cleaner code:
 
 ```go
-import th "github.com/mymmrac/telego/telegohandler"
+import th "github.com/nlypage/telegox/telegohandler"
 ```
 
 Here is an example of using handlers with long polling updates.
@@ -461,9 +453,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mymmrac/telego"
-	th "github.com/mymmrac/telego/telegohandler"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	th "github.com/nlypage/telegox/telegohandler"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 func main() {
@@ -517,7 +509,7 @@ func main() {
 Just handling updates is useful, but handling specific updates like messages or callback queries in most of the
 cases is more straightforward and provides cleaner code.
 
-So Telego provides specific handles for all fields of `telego.Update`. See the list of all available handler types in
+So TelegoX provides specific handles for all fields of `telego.Update`. See the list of all available handler types in
 [`telegohandler/handlers`](telegohandler/handlers.go), or define your own.
 
 ```go
@@ -526,9 +518,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/mymmrac/telego"
-	th "github.com/mymmrac/telego/telegohandler"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	th "github.com/nlypage/telegox/telegohandler"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 func main() {
@@ -566,7 +558,7 @@ func main() {
 ```
 
 One more important part of handlers is groups and middlewares.
-Telego allows creating groups with and without predicates and attaching middleware to groups.
+TelegoX allows creating groups with and without predicates and attaching middleware to groups.
 
 ```go
 package main
@@ -574,8 +566,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/mymmrac/telego"
-	th "github.com/mymmrac/telego/telegohandler"
+	"github.com/nlypage/telegox"
+	th "github.com/nlypage/telegox/telegohandler"
 )
 
 func main() {
@@ -613,9 +605,9 @@ func main() {
 
 ### :gear: Build configuration
 
-[▲ Go Up ▲](#telego--go-telegram-bot-api)
+[▲ Go Up ▲](#telegox--go-telegram-bot-api)
 
-Telego supports multiple build configurations via Go's build tags
+TelegoX supports multiple build configurations via Go's build tags
 (right now only to change JSON encoding/decoding library):
 
 - No tags - use [goccy/go-json](https://github.com/goccy/go-json)
@@ -634,13 +626,13 @@ Contribution guidelines listed [here](docs/CONTRIBUTING.md).
 
 ## :star: Stargazers over time
 
-[![Stargazers over time](https://starchart.cc/mymmrac/telego.svg)](https://starchart.cc/mymmrac/telego)
+[![Stargazers over time](https://starchart.cc/nlypage/telegox.svg)](https://starchart.cc/nlypage/telegox)
 
 > Powered by [caarlos0/starcharts](https://github.com/caarlos0/starcharts)
 
 ## :closed_lock_with_key: License
 
-Telego is distributed under [MIT licence](LICENSE).
+TelegoX is distributed under [MIT licence](LICENSE).
 
 [TelegramBotAPI]: https://core.telegram.org/bots/api
 
