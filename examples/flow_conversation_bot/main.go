@@ -50,12 +50,19 @@ func main() {
 
 	// Commands that should work inside a flow should be registered before flow middleware.
 	bh.Handle(func(ctx *th.Context, update telego.Update) error {
-		if err := flows.Cancel(ctx, update); err != nil {
+		_, hasSession, err := flows.ActiveSession(ctx, update)
+		if err != nil {
+			return err
+		}
+		if !hasSession {
 			_, sendErr := ctx.Bot().SendMessage(ctx, tu.Message(update.Message.Chat.ChatID(), "No active conversation"))
 			return sendErr
 		}
+		if err = flows.Cancel(ctx, update); err != nil {
+			return err
+		}
 
-		_, err := ctx.Bot().SendMessage(ctx, tu.Message(update.Message.Chat.ChatID(), "Conversation canceled"))
+		_, err = ctx.Bot().SendMessage(ctx, tu.Message(update.Message.Chat.ChatID(), "Conversation canceled"))
 		return err
 	}, th.CommandEqual("cancel"))
 
