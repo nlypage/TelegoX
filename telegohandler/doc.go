@@ -21,9 +21,9 @@ handler in any group to process the update.
 		"fmt"
 		"os"
 
-		"github.com/mymmrac/telego"
-		th "github.com/mymmrac/telego/telegohandler"
-		tu "github.com/mymmrac/telego/telegoutil"
+		"github.com/nlypage/telegox"
+		th "github.com/nlypage/telegox/telegohandler"
+		tu "github.com/nlypage/telegox/telegoutil"
 	)
 
 	func main() {
@@ -81,9 +81,9 @@ It shows how to use specific handlers to process individual fields of [telego.Up
 		"fmt"
 		"os"
 
-		"github.com/mymmrac/telego"
-		th "github.com/mymmrac/telego/telegohandler"
-		tu "github.com/mymmrac/telego/telegoutil"
+		"github.com/nlypage/telegox"
+		th "github.com/nlypage/telegox/telegohandler"
+		tu "github.com/nlypage/telegox/telegoutil"
 	)
 
 	func main() {
@@ -141,8 +141,8 @@ In this example, usage of groups and middleware will be shown.
 		"fmt"
 		"os"
 
-		"github.com/mymmrac/telego"
-		th "github.com/mymmrac/telego/telegohandler"
+		"github.com/nlypage/telegox"
+		th "github.com/nlypage/telegox/telegohandler"
 	)
 
 	func main() {

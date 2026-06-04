@@ -213,7 +213,7 @@ func writeMethods(file *os.File, methods tgMethods, currentMethods string) {
 import (
 	"fmt"
 
-	ta "github.com/mymmrac/telego/telegoapi"
+	ta "github.com/nlypage/telegox/telegoapi"
 )
 `)
 

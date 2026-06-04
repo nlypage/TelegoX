@@ -1,4 +1,4 @@
-module github.com/mymmrac/telego
+module github.com/nlypage/telegox
 
 go 1.25.7
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	tu "github.com/mymmrac/telego/telegoutil"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 func TestWebhookInfo(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/mymmrac/telego"
+	"github.com/nlypage/telegox"
 )
 
 // Context is a wrapper around [context.Context] with bot handler specific methods

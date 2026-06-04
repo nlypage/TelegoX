@@ -1,4 +1,4 @@
-//go:generate mockgen -typed -package mock -destination=mock/caller.go github.com/mymmrac/telego/telegoapi Caller
+//go:generate mockgen -typed -package mock -destination=mock/caller.go github.com/nlypage/telegox/telegoapi Caller
 
 package telegoapi
 
@@ -14,7 +14,7 @@ import (
 
 	"github.com/valyala/fasthttp"
 
-	"github.com/mymmrac/telego/internal/json"
+	"github.com/nlypage/telegox/internal/json"
 )
 
 // FastHTTPCaller fasthttp implementation of [Caller]

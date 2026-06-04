@@ -1,13 +1,17 @@
-module github.com/mymmrac/telego/examples
+module github.com/nlypage/telegox/examples
 
 go 1.25.7
 
 require (
 	github.com/gofiber/fiber/v3 v3.3.0
-	github.com/mymmrac/telego v1.9.0
+	github.com/nlypage/telegox v1.9.0
 	github.com/valyala/fasthttp v1.71.0
 	golang.ngrok.com/ngrok v1.13.0
 )
+
+// Use the local parent module so examples can import packages added in this
+// repository before they are available in the latest released telego version.
+replace github.com/nlypage/telegox => ..
 
 require (
 	github.com/andybalholm/brotli v1.2.1 // indirect

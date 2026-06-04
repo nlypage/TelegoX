@@ -3,7 +3,7 @@ package telegoutil
 import (
 	"strings"
 
-	th "github.com/mymmrac/telego/telegohandler"
+	th "github.com/nlypage/telegox/telegohandler"
 )
 
 // ParseCommand returns command, bot username and its arguments if any
