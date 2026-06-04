@@ -1,6 +1,6 @@
-# Telegoflow • Typed Conversations for Telego
+# Telegoflow • Typed Conversations for TelegoX
 
-Telegoflow is a stateful conversation builder for [`telego`](https://github.com/mymmrac/telego).
+Telegoflow is a stateful conversation builder for [`TelegoX`](https://github.com/nlypage/TelegoX).
 It helps build multi-step dialogs as controlled flows with typed session data, explicit transitions, storage-backed
 state, and native integration with [`telegohandler`](../telegohandler).
 
@@ -20,6 +20,9 @@ state, and native integration with [`telegohandler`](../telegohandler).
     - [:hourglass_flowing_sand: Timeouts](#hourglass_flowing_sand-timeouts)
     - [:no_entry_sign: Canceling flows](#no_entry_sign-canceling-flows)
     - [:gear: Custom session keys](#gear-custom-session-keys)
+    - [:jigsaw: Widgets](#jigsaw-widgets)
+        - [Calendar widget](#calendar-widget)
+        - [List widget](#list-widget)
 - [:bricks: Core Concepts](#bricks-core-concepts)
 - [:test_tube: Testing](#test_tube-testing)
 
@@ -27,7 +30,7 @@ state, and native integration with [`telegohandler`](../telegohandler).
 
 ## :zap: Getting Started
 
-[▲ Go Up ▲](#telegoflow--typed-conversations-for-telego)
+[▲ Go Up ▲](#telegoflow--typed-conversations-for-telegox)
 
 ### :jigsaw: Basic setup
 
@@ -44,10 +47,10 @@ import (
     "os"
     "strconv"
 
-    "github.com/mymmrac/telego"
-    tf "github.com/mymmrac/telego/telegoflow"
-    th "github.com/mymmrac/telego/telegohandler"
-    tu "github.com/mymmrac/telego/telegoutil"
+    "github.com/nlypage/telegox"
+    tf "github.com/nlypage/telegox/telegoflow"
+    th "github.com/nlypage/telegox/telegohandler"
+    tu "github.com/nlypage/telegox/telegoutil"
 )
 
 type Registration struct {
@@ -173,7 +176,7 @@ func main() {
 
 ### :left_right_arrow: Controlled transitions
 
-[▲ Go Up ▲](#telegoflow--typed-conversations-for-telego)
+[▲ Go Up ▲](#telegoflow--typed-conversations-for-telegox)
 
 Each step declares where it can go:
 
@@ -194,7 +197,7 @@ This keeps dialog graphs explicit and easier to audit.
 
 ### :chart_with_upwards_trend: Text graph
 
-[▲ Go Up ▲](#telegoflow--typed-conversations-for-telego)
+[▲ Go Up ▲](#telegoflow--typed-conversations-for-telegox)
 
 A built flow can print its transition graph for quick visual analysis:
 
@@ -220,7 +223,7 @@ start step are shown in an `unreachable` section.
 
 ### :floppy_disk: Session storage
 
-[▲ Go Up ▲](#telegoflow--typed-conversations-for-telego)
+[▲ Go Up ▲](#telegoflow--typed-conversations-for-telegox)
 
 Flow sessions are saved through the `Storage` interface:
 
@@ -244,7 +247,7 @@ with the same ID and step IDs.
 
 ### :hourglass_flowing_sand: Timeouts
 
-[▲ Go Up ▲](#telegoflow--typed-conversations-for-telego)
+[▲ Go Up ▲](#telegoflow--typed-conversations-for-telegox)
 
 Use `WithTimeout` to expire inactive sessions:
 
@@ -263,7 +266,7 @@ When the next update for an expired session arrives, Telegoflow runs `OnTimeout`
 
 ### :no_entry_sign: Canceling flows
 
-[▲ Go Up ▲](#telegoflow--typed-conversations-for-telego)
+[▲ Go Up ▲](#telegoflow--typed-conversations-for-telegox)
 
 Register cancel commands before `flows.Middleware()` so they can interrupt an active session:
 
@@ -283,7 +286,7 @@ return ctx.Cancel()
 
 ### :gear: Custom session keys
 
-[▲ Go Up ▲](#telegoflow--typed-conversations-for-telego)
+[▲ Go Up ▲](#telegoflow--typed-conversations-for-telegox)
 
 By default, sessions are scoped by `chat_id:user_id`. This means the same user can have independent sessions in private
 chats and groups.
@@ -299,9 +302,129 @@ flows := telegoflow.NewManager(storage, telegoflow.WithKeyFunc(func(update teleg
 }))
 ```
 
+### :jigsaw: Widgets
+
+[▲ Go Up ▲](#telegoflow--typed-conversations-for-telegox)
+
+Telegoflow includes ready-to-use inline keyboard widgets for common step UIs. Widgets are regular step building blocks:
+mount their `Send` handler in `Step.Enter`, mount their `Handle` handler in `Step.Handle`, and use their `Predicate` to
+route callback queries.
+
+Widget packages:
+
+- `telegoflow/widget` contains low-level primitives for building custom widgets: callback encoding, predicates, views,
+  and send/edit helpers.
+- `telegoflow/widgets/calendar` contains a date picker widget.
+- `telegoflow/widgets/list` contains a paginated single-select or multi-select list widget.
+
+See [`examples/flow_widgets_bot`](../examples/flow_widgets_bot/main.go) for a complete example.
+
+#### Calendar widget
+
+```go
+import cal "github.com/nlypage/telegox/telegoflow/widgets/calendar"
+
+type BookingData struct {
+    Date cal.Date `json:"date"`
+}
+
+calendar, err := cal.New[BookingData]("date").
+    Labels(cal.EnglishLabels()).
+    Min(cal.DateFromTime(time.Now())).
+    Current(func(data *BookingData) (cal.Date, bool) {
+        return data.Date, !data.Date.IsZero()
+    }).
+    OnSelect(func(ctx *tf.Context[BookingData], date cal.Date) error {
+        ctx.Data().Date = date
+        return ctx.Go("confirm")
+    }).
+    Build()
+if err != nil {
+    return err
+}
+
+step := calendar.Step("date", "Choose a date:").CanGo("confirm")
+```
+
+`Current` returns the current date value from flow data. The widget uses it to open the matching month and format that
+calendar day with `Labels.SelectedDay`. To hide the marker, set `SelectedDay` to `"%s"`.
+
+Dates outside `Min`/`Max` are rendered as empty cells. Dates disabled with `Disabled` remain visible but inactive.
+
+#### List widget
+
+```go
+import lst "github.com/nlypage/telegox/telegoflow/widgets/list"
+
+type City struct {
+    ID   string
+    Name string
+}
+
+type BookingData struct {
+    CityID string `json:"city_id"`
+}
+
+cities, err := lst.New[BookingData, City]("city").
+    PageItems(func(ctx *tf.Context[BookingData], page lst.PageRequest) (lst.PageResult[City], error) {
+        items, total, err := loadCities(ctx, page.Limit, page.Offset)
+        if err != nil {
+            return lst.PageResult[City]{}, err
+        }
+        return lst.PageWithTotal(items, total), nil
+    }).
+    Key(func(city City) string {
+        return city.ID
+    }).
+    Label(func(city City) string {
+        return city.Name
+    }).
+    Selected(func(data *BookingData) string {
+        return data.CityID
+    }).
+    OnSelect(func(ctx *tf.Context[BookingData], city City) error {
+        ctx.Data().CityID = city.ID
+        return ctx.Go("confirm")
+    }).
+    PageSize(8).
+    Build()
+if err != nil {
+    return err
+}
+
+step := cities.Step("city", "Choose a city:").CanGo("confirm")
+```
+
+Use `Items` for small in-memory lists. Use `PageItems` for database-backed lists; `PageRequest` provides `Page`,
+`Offset`, and `Limit`, and `PageWithTotal` lets the widget render total page count. If the total is unknown, return
+`lst.Page(items, hasNext)`.
+
+For multi-select lists, provide selected keys, a toggle handler, and a confirmation handler:
+
+```go
+extras, err := lst.New[BookingData, Extra]("extras").
+    PageItems(loadExtrasPage).
+    Key(func(extra Extra) string { return extra.ID }).
+    Label(func(extra Extra) string { return extra.Name }).
+    MultiSelect(
+        func(data *BookingData) []string { return data.ExtraIDs },
+        func(ctx *tf.Context[BookingData], extra Extra, selected bool) error {
+            toggleExtra(ctx.Data(), extra, selected)
+            return nil
+        },
+    ).
+    OnConfirm(func(ctx *tf.Context[BookingData]) error {
+        return ctx.Go("confirm")
+    }).
+    Build()
+```
+
+`Labels.Selected` controls how selected list items are rendered, and `Labels.Confirm` controls the multi-select confirm
+button text.
+
 ## :bricks: Core Concepts
 
-[▲ Go Up ▲](#telegoflow--typed-conversations-for-telego)
+[▲ Go Up ▲](#telegoflow--typed-conversations-for-telegox)
 
 - **Manager** stores registered flows and routes active sessions through `telegohandler` middleware.
 - **Flow** is a typed dialog graph with lifecycle hooks: `OnComplete`, `OnCancel`, `OnTimeout`, and `OnError`.
