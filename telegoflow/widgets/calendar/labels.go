@@ -1,5 +1,7 @@
 package calendar
 
+const monthsPerYear = 12
+
 // Labels contains user-visible calendar button labels.
 type Labels struct {
 	Months   []string
@@ -49,10 +51,10 @@ func RussianLabels() Labels {
 
 func (l Labels) normalize() Labels {
 	defaults := EnglishLabels()
-	if len(l.Months) != 12 {
+	if len(l.Months) != monthsPerYear {
 		l.Months = defaults.Months
 	}
-	if len(l.Weekdays) != 7 {
+	if len(l.Weekdays) != daysPerWeek {
 		l.Weekdays = defaults.Weekdays
 	}
 	if l.PrevMonth == "" {

@@ -1,6 +1,7 @@
 package list
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -16,6 +17,12 @@ const (
 	actionPage    = "p"
 	actionSelect  = "s"
 	actionConfirm = "c"
+
+	defaultPageSize       = 8
+	defaultColumns        = 1
+	paginationRows        = 1
+	confirmRows           = 1
+	pageIndexCallbackArgs = 2
 )
 
 // ItemsFunc loads all list items for the current flow context.
@@ -97,8 +104,8 @@ func New[T any, Item any](id string) *Builder[T, Item] {
 	return &Builder[T, Item]{
 		id:       id,
 		labels:   EnglishLabels(),
-		pageSize: 8,
-		columns:  1,
+		pageSize: defaultPageSize,
+		columns:  defaultColumns,
 	}
 }
 
@@ -152,7 +159,10 @@ func (b *Builder[T, Item]) Selected(selected func(data *T) string) *Builder[T, I
 //
 // selectedKeys returns keys already selected in flow data. onToggle is called on each item click
 // with selected set to the new state. Use OnConfirm to handle the confirmation button.
-func (b *Builder[T, Item]) MultiSelect(selectedKeys SelectedKeysFunc[T], onToggle ToggleHandler[T, Item]) *Builder[T, Item] {
+func (b *Builder[T, Item]) MultiSelect(
+	selectedKeys SelectedKeysFunc[T],
+	onToggle ToggleHandler[T, Item],
+) *Builder[T, Item] {
 	b.multiSelect = true
 	b.selectedKeys = selectedKeys
 	b.onToggle = onToggle
@@ -191,36 +201,8 @@ func (b *Builder[T, Item]) OnSelect(handler func(ctx *tf.Context[T], item Item) 
 
 // Build validates and creates a List widget.
 func (b *Builder[T, Item]) Build() (*List[T, Item], error) {
-	if err := widget.ValidateID(b.id); err != nil {
+	if err := b.validate(); err != nil {
 		return nil, err
-	}
-	if b.items == nil && b.pageItems == nil {
-		return nil, fmt.Errorf("list: items or page items function is required")
-	}
-	if b.label == nil && b.button == nil {
-		return nil, fmt.Errorf("list: label or button function is required")
-	}
-	if b.pageSize <= 0 {
-		return nil, fmt.Errorf("list: page size must be positive")
-	}
-	if b.columns <= 0 {
-		return nil, fmt.Errorf("list: columns must be positive")
-	}
-	if b.multiSelect {
-		if b.key == nil {
-			return nil, fmt.Errorf("list: key function is required for multi-select")
-		}
-		if b.selectedKeys == nil {
-			return nil, fmt.Errorf("list: selected keys function is required for multi-select")
-		}
-		if b.onToggle == nil {
-			return nil, fmt.Errorf("list: toggle handler is required for multi-select")
-		}
-		if b.onConfirm == nil {
-			return nil, fmt.Errorf("list: confirm handler is required for multi-select")
-		}
-	} else if b.onSelect == nil {
-		return nil, fmt.Errorf("list: select handler is required")
 	}
 	return &List[T, Item]{
 		id:           b.id,
@@ -241,6 +223,51 @@ func (b *Builder[T, Item]) Build() (*List[T, Item], error) {
 	}, nil
 }
 
+func (b *Builder[T, Item]) validate() error {
+	if err := widget.ValidateID(b.id); err != nil {
+		return err
+	}
+	if b.items == nil && b.pageItems == nil {
+		return errors.New("list: items or page items function is required")
+	}
+	if b.label == nil && b.button == nil {
+		return errors.New("list: label or button function is required")
+	}
+	if b.pageSize <= 0 {
+		return errors.New("list: page size must be positive")
+	}
+	if b.columns <= 0 {
+		return errors.New("list: columns must be positive")
+	}
+	if !b.multiSelect {
+		return b.validateSingleSelect()
+	}
+	return b.validateMultiSelect()
+}
+
+func (b *Builder[T, Item]) validateSingleSelect() error {
+	if b.onSelect == nil {
+		return errors.New("list: select handler is required")
+	}
+	return nil
+}
+
+func (b *Builder[T, Item]) validateMultiSelect() error {
+	if b.key == nil {
+		return errors.New("list: key function is required for multi-select")
+	}
+	if b.selectedKeys == nil {
+		return errors.New("list: selected keys function is required for multi-select")
+	}
+	if b.onToggle == nil {
+		return errors.New("list: toggle handler is required for multi-select")
+	}
+	if b.onConfirm == nil {
+		return errors.New("list: confirm handler is required for multi-select")
+	}
+	return nil
+}
+
 // List is a paginated inline list widget for telegoflow steps.
 type List[T any, Item any] struct {
 	id           string
@@ -258,6 +285,31 @@ type List[T any, Item any] struct {
 	labels       Labels
 	pageSize     int
 	columns      int
+}
+
+type itemAddressMode int
+
+const (
+	itemAddressDefault itemAddressMode = iota
+	itemAddressByPageIndex
+)
+
+type loadedPage[Item any] struct {
+	items      []Item
+	pageCount  int
+	hasNext    bool
+	totalKnown bool
+	page       int
+}
+
+type callbackItem[Item any] struct {
+	item  Item
+	page  int
+	found bool
+}
+
+type itemRenderState struct {
+	selected bool
 }
 
 // ID returns widget ID.
@@ -309,38 +361,10 @@ func (l *List[T, Item]) Handle(ctx *tf.Context[T]) error {
 	}
 
 	switch callback.Action {
-	case actionNoop:
-		return nil
 	case actionPage:
-		if len(callback.Args) != 1 {
-			return nil
-		}
-		page, err := strconv.Atoi(callback.Args[0])
-		if err != nil || page < 0 {
-			return nil
-		}
-		markup, err := l.renderPage(ctx, page)
-		if err != nil {
-			return err
-		}
-		return widget.EditCallbackView(ctx, widget.View{Text: widget.CallbackMessageText(query, "List"), Markup: markup})
+		return l.handlePage(ctx, query, callback.Args)
 	case actionSelect:
-		item, page, ok, err := l.itemFromCallback(ctx, callback.Args)
-		if err != nil || !ok {
-			return err
-		}
-		if l.multiSelect {
-			selected := !l.itemSelected(ctx.Data(), item)
-			if err = l.onToggle(ctx, item, selected); err != nil {
-				return err
-			}
-			markup, err := l.renderPage(ctx, page)
-			if err != nil {
-				return err
-			}
-			return widget.EditCallbackView(ctx, widget.View{Text: widget.CallbackMessageText(query, "List"), Markup: markup})
-		}
-		return l.onSelect(ctx, item)
+		return l.handleSelect(ctx, query, callback.Args)
 	case actionConfirm:
 		return l.onConfirm(ctx)
 	default:
@@ -348,31 +372,84 @@ func (l *List[T, Item]) Handle(ctx *tf.Context[T]) error {
 	}
 }
 
+func (l *List[T, Item]) handlePage(ctx *tf.Context[T], query *telego.CallbackQuery, args []string) error {
+	if len(args) != defaultColumns {
+		return nil
+	}
+	page, ok := parsePageArg(args[0])
+	if !ok {
+		return nil
+	}
+	markup, err := l.renderPage(ctx, page)
+	if err != nil {
+		return err
+	}
+	return editCallbackView(ctx, query, markup)
+}
+
+func (l *List[T, Item]) handleSelect(ctx *tf.Context[T], query *telego.CallbackQuery, args []string) error {
+	callbackItem, err := l.itemFromCallback(ctx, args)
+	if err != nil {
+		return err
+	}
+	if !callbackItem.found {
+		return nil
+	}
+	if !l.multiSelect {
+		return l.onSelect(ctx, callbackItem.item)
+	}
+
+	selected := !l.itemSelected(ctx.Data(), callbackItem.item)
+	if err = l.onToggle(ctx, callbackItem.item, selected); err != nil {
+		return err
+	}
+	markup, err := l.renderPage(ctx, callbackItem.page)
+	if err != nil {
+		return err
+	}
+	return editCallbackView(ctx, query, markup)
+}
+
+func editCallbackView[T any](
+	ctx *tf.Context[T],
+	query *telego.CallbackQuery,
+	markup *telego.InlineKeyboardMarkup,
+) error {
+	return widget.EditCallbackView(ctx, widget.View{
+		Text:   widget.CallbackMessageText(query, "List"),
+		Markup: markup,
+	})
+}
+
 func (l *List[T, Item]) renderPage(ctx *tf.Context[T], page int) (*telego.InlineKeyboardMarkup, error) {
 	if page < 0 {
 		page = 0
 	}
+	addressMode := itemAddressDefault
 	if l.pageItems != nil {
-		return l.renderLoadedPage(ctx, page, true)
+		addressMode = itemAddressByPageIndex
 	}
-	return l.renderLoadedPage(ctx, page, false)
+	return l.renderLoadedPage(ctx, page, addressMode)
 }
 
-func (l *List[T, Item]) renderLoadedPage(ctx *tf.Context[T], page int, serverPaged bool) (*telego.InlineKeyboardMarkup, error) {
-	items, pageCount, hasNext, totalKnown, page, err := l.loadPage(ctx, page)
+func (l *List[T, Item]) renderLoadedPage(
+	ctx *tf.Context[T],
+	page int,
+	addressMode itemAddressMode,
+) (*telego.InlineKeyboardMarkup, error) {
+	loaded, err := l.loadPage(ctx, page)
 	if err != nil {
 		return nil, err
 	}
-	if len(items) == 0 && page == 0 {
+	if len(loaded.items) == 0 && loaded.page == 0 {
 		return tu.InlineKeyboard(tu.InlineKeyboardRow(l.noopButton(l.labels.Empty))), nil
 	}
 
 	selected := l.selectedSet(ctx.Data())
-
-	rows := make([][]telego.InlineKeyboardButton, 0, (len(items)+l.columns-1)/l.columns+2)
+	rows := make([][]telego.InlineKeyboardButton, 0, l.rowCapacity(len(loaded.items)))
 	row := make([]telego.InlineKeyboardButton, 0, l.columns)
-	for i, item := range items {
-		button, err := l.itemButton(item, page, i, selected, serverPaged)
+	for i, item := range loaded.items {
+		button, err := l.itemButton(item, loaded.page, i, selected, addressMode)
 		if err != nil {
 			return nil, err
 		}
@@ -385,7 +462,7 @@ func (l *List[T, Item]) renderLoadedPage(ctx *tf.Context[T], page int, serverPag
 	if len(row) > 0 {
 		rows = append(rows, row)
 	}
-	rows = append(rows, l.paginationRow(page, pageCount, hasNext, totalKnown))
+	rows = append(rows, l.paginationRow(loaded))
 	if l.multiSelect {
 		button, err := l.confirmButton()
 		if err != nil {
@@ -396,69 +473,87 @@ func (l *List[T, Item]) renderLoadedPage(ctx *tf.Context[T], page int, serverPag
 	return tu.InlineKeyboard(rows...), nil
 }
 
-func (l *List[T, Item]) loadPage(ctx *tf.Context[T], page int) ([]Item, int, bool, bool, int, error) {
+func (l *List[T, Item]) rowCapacity(items int) int {
+	extraRows := paginationRows
+	if l.multiSelect {
+		extraRows += confirmRows
+	}
+	return (items+l.columns-1)/l.columns + extraRows
+}
+
+func (l *List[T, Item]) loadPage(ctx *tf.Context[T], page int) (loadedPage[Item], error) {
 	if l.pageItems != nil {
-		request := PageRequest{Page: page, Offset: page * l.pageSize, Limit: l.pageSize}
-		result, err := l.pageItems(ctx, request)
-		if err != nil {
-			return nil, 0, false, false, page, err
-		}
-		if result.Total != nil {
-			pages := pageCount(*result.Total, l.pageSize)
-			if pages > 0 && page >= pages {
-				page = pages - 1
-				request = PageRequest{Page: page, Offset: page * l.pageSize, Limit: l.pageSize}
-				result, err = l.pageItems(ctx, request)
-				if err != nil {
-					return nil, 0, false, false, page, err
-				}
-			}
-			return result.Items, pages, page+1 < pages, true, page, nil
-		}
-		return result.Items, 0, result.HasNext, false, page, nil
+		return l.loadServerPage(ctx, page)
+	}
+	return l.loadLocalPage(ctx, page)
+}
+
+func (l *List[T, Item]) loadServerPage(ctx *tf.Context[T], page int) (loadedPage[Item], error) {
+	request := PageRequest{Page: page, Offset: page * l.pageSize, Limit: l.pageSize}
+	result, err := l.pageItems(ctx, request)
+	if err != nil {
+		return loadedPage[Item]{page: page}, err
+	}
+	if result.Total == nil {
+		return loadedPage[Item]{items: result.Items, hasNext: result.HasNext, page: page}, nil
 	}
 
+	pages := pageCount(*result.Total, l.pageSize)
+	if pages > 0 && page >= pages {
+		page = pages - 1
+		request = PageRequest{Page: page, Offset: page * l.pageSize, Limit: l.pageSize}
+		result, err = l.pageItems(ctx, request)
+		if err != nil {
+			return loadedPage[Item]{page: page}, err
+		}
+	}
+	return loadedPage[Item]{
+		items:      result.Items,
+		pageCount:  pages,
+		hasNext:    page+1 < pages,
+		totalKnown: true,
+		page:       page,
+	}, nil
+}
+
+func (l *List[T, Item]) loadLocalPage(ctx *tf.Context[T], page int) (loadedPage[Item], error) {
 	items, err := l.items(ctx)
 	if err != nil {
-		return nil, 0, false, false, page, err
+		return loadedPage[Item]{page: page}, err
 	}
 	pages := pageCount(len(items), l.pageSize)
 	if pages == 0 {
-		return nil, 0, false, true, 0, nil
+		return loadedPage[Item]{totalKnown: true}, nil
 	}
 	if page >= pages {
 		page = pages - 1
 	}
 	start := page * l.pageSize
 	end := min(start+l.pageSize, len(items))
-	return items[start:end], pages, page+1 < pages, true, page, nil
+	return loadedPage[Item]{
+		items:      items[start:end],
+		pageCount:  pages,
+		hasNext:    page+1 < pages,
+		totalKnown: true,
+		page:       page,
+	}, nil
 }
 
-func (l *List[T, Item]) itemButton(item Item, page, pageIndex int, selected map[string]struct{}, forcePageIndex bool) (telego.InlineKeyboardButton, error) {
+func (l *List[T, Item]) itemButton(
+	item Item,
+	page int,
+	pageIndex int,
+	selected map[string]struct{},
+	addressMode itemAddressMode,
+) (telego.InlineKeyboardButton, error) {
 	itemKey := ""
 	if l.key != nil {
 		itemKey = l.key(item)
 	}
 	_, isSelected := selected[itemKey]
 
-	var button telego.InlineKeyboardButton
-	if l.button != nil {
-		button = l.button(item, isSelected)
-	} else {
-		label := l.label(item)
-		if isSelected {
-			label = fmt.Sprintf(l.labels.Selected, label)
-		}
-		button = tu.InlineKeyboardButton(label)
-	}
-
-	var data string
-	var err error
-	if l.key != nil && !forcePageIndex && !l.multiSelect {
-		data, err = widget.EncodeCallback(l.id, actionSelect, itemKey)
-	} else {
-		data, err = widget.EncodeCallback(l.id, actionSelect, strconv.Itoa(page), strconv.Itoa(pageIndex))
-	}
+	button := l.renderItemButton(item, itemRenderState{selected: isSelected})
+	data, err := l.itemCallbackData(itemKey, page, pageIndex, addressMode)
 	if err != nil {
 		return telego.InlineKeyboardButton{}, err
 	}
@@ -466,19 +561,42 @@ func (l *List[T, Item]) itemButton(item Item, page, pageIndex int, selected map[
 	return button, nil
 }
 
-func (l *List[T, Item]) paginationRow(page, pageCount int, hasNext, totalKnown bool) []telego.InlineKeyboardButton {
+func (l *List[T, Item]) renderItemButton(item Item, state itemRenderState) telego.InlineKeyboardButton {
+	if l.button != nil {
+		return l.button(item, state.selected)
+	}
+	label := l.label(item)
+	if state.selected {
+		label = fmt.Sprintf(l.labels.Selected, label)
+	}
+	return tu.InlineKeyboardButton(label)
+}
+
+func (l *List[T, Item]) itemCallbackData(
+	itemKey string,
+	page int,
+	pageIndex int,
+	addressMode itemAddressMode,
+) (string, error) {
+	if l.key != nil && addressMode == itemAddressDefault && !l.multiSelect {
+		return widget.EncodeCallback(l.id, actionSelect, itemKey)
+	}
+	return widget.EncodeCallback(l.id, actionSelect, strconv.Itoa(page), strconv.Itoa(pageIndex))
+}
+
+func (l *List[T, Item]) paginationRow(loaded loadedPage[Item]) []telego.InlineKeyboardButton {
 	prev := l.noopButton(l.labels.Prev)
-	if page > 0 {
-		prev = l.pageButton(l.labels.Prev, page-1)
+	if loaded.page > 0 {
+		prev = l.pageButton(l.labels.Prev, loaded.page-1)
 	}
 	next := l.noopButton(l.labels.Next)
-	if hasNext {
-		next = l.pageButton(l.labels.Next, page+1)
+	if loaded.hasNext {
+		next = l.pageButton(l.labels.Next, loaded.page+1)
 	}
 
-	pageLabel := fmt.Sprintf(l.labels.PageUnknown, page+1)
-	if totalKnown {
-		pageLabel = fmt.Sprintf(l.labels.Page, page+1, pageCount)
+	pageLabel := fmt.Sprintf(l.labels.PageUnknown, loaded.page+1)
+	if loaded.totalKnown {
+		pageLabel = fmt.Sprintf(l.labels.Page, loaded.page+1, loaded.pageCount)
 	}
 	return tu.InlineKeyboardRow(prev, l.noopButton(pageLabel), next)
 }
@@ -500,7 +618,10 @@ func (l *List[T, Item]) pageButton(label string, page int) telego.InlineKeyboard
 }
 
 func (l *List[T, Item]) noopButton(label string) telego.InlineKeyboardButton {
-	data, _ := widget.EncodeCallback(l.id, actionNoop)
+	data, err := widget.EncodeCallback(l.id, actionNoop)
+	if err != nil {
+		return tu.InlineKeyboardButton(label)
+	}
 	return tu.InlineKeyboardButton(label).WithCallbackData(data)
 }
 
@@ -528,69 +649,85 @@ func (l *List[T, Item]) itemSelected(data *T, item Item) bool {
 	return ok
 }
 
-func (l *List[T, Item]) itemFromCallback(ctx *tf.Context[T], args []string) (Item, int, bool, error) {
-	var zero Item
+func (l *List[T, Item]) itemFromCallback(
+	ctx *tf.Context[T],
+	args []string,
+) (callbackItem[Item], error) {
 	if l.pageItems != nil {
 		return l.pagedItemFromCallback(ctx, args)
 	}
 
 	items, err := l.items(ctx)
 	if err != nil {
-		return zero, 0, false, err
+		return callbackItem[Item]{}, err
 	}
 	if l.key != nil && !l.multiSelect {
-		if len(args) != 1 {
-			return zero, 0, false, nil
-		}
-		for _, item := range items {
-			if l.key(item) == args[0] {
-				return item, 0, true, nil
-			}
-		}
-		return zero, 0, false, nil
+		return l.itemByKey(items, args), nil
 	}
 
 	page, pageIndex, ok := parsePageIndex(args, l.pageSize)
 	if !ok {
-		return zero, 0, false, nil
+		return callbackItem[Item]{}, nil
 	}
 	index := page*l.pageSize + pageIndex
 	if index < 0 || index >= len(items) {
-		return zero, 0, false, nil
+		return callbackItem[Item]{}, nil
 	}
-	return items[index], page, true, nil
+	return callbackItem[Item]{item: items[index], page: page, found: true}, nil
 }
 
-func (l *List[T, Item]) pagedItemFromCallback(ctx *tf.Context[T], args []string) (Item, int, bool, error) {
-	var zero Item
+func (l *List[T, Item]) itemByKey(items []Item, args []string) callbackItem[Item] {
+	if len(args) != defaultColumns {
+		return callbackItem[Item]{}
+	}
+	for _, item := range items {
+		if l.key(item) == args[0] {
+			return callbackItem[Item]{item: item, found: true}
+		}
+	}
+	return callbackItem[Item]{}
+}
+
+func (l *List[T, Item]) pagedItemFromCallback(
+	ctx *tf.Context[T],
+	args []string,
+) (callbackItem[Item], error) {
 	page, pageIndex, ok := parsePageIndex(args, l.pageSize)
 	if !ok {
-		return zero, 0, false, nil
+		return callbackItem[Item]{}, nil
 	}
 	request := PageRequest{Page: page, Offset: page * l.pageSize, Limit: l.pageSize}
 	result, err := l.pageItems(ctx, request)
 	if err != nil {
-		return zero, 0, false, err
+		return callbackItem[Item]{}, err
 	}
 	if pageIndex >= len(result.Items) {
-		return zero, 0, false, nil
+		return callbackItem[Item]{}, nil
 	}
-	return result.Items[pageIndex], page, true, nil
+	return callbackItem[Item]{item: result.Items[pageIndex], page: page, found: true}, nil
 }
 
-func parsePageIndex(args []string, pageSize int) (int, int, bool) {
-	if len(args) != 2 {
+func parsePageIndex(args []string, pageSize int) (page int, pageIndex int, ok bool) {
+	if len(args) != pageIndexCallbackArgs {
 		return 0, 0, false
 	}
-	page, err := strconv.Atoi(args[0])
-	if err != nil || page < 0 {
+	page, ok = parsePageArg(args[0])
+	if !ok {
 		return 0, 0, false
 	}
-	pageIndex, err := strconv.Atoi(args[1])
-	if err != nil || pageIndex < 0 || pageIndex >= pageSize {
+	pageIndex, ok = parsePageArg(args[1])
+	if !ok || pageIndex >= pageSize {
 		return 0, 0, false
 	}
 	return page, pageIndex, true
+}
+
+func parsePageArg(value string) (int, bool) {
+	page, convErr := strconv.Atoi(value)
+	if convErr != nil || page < 0 {
+		return 0, false
+	}
+	return page, true
 }
 
 func pageCount(items, pageSize int) int {

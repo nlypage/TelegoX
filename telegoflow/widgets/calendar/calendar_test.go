@@ -20,7 +20,8 @@ func TestCalendarRenderMonth(t *testing.T) {
 		t.Fatalf("Build() error = %v", err)
 	}
 
-	markup, err := calendar.renderMonth(nil, &calendarTestData{Current: Date{Year: 2026, Month: time.June, Day: 2}}, 2026, time.June)
+	data := &calendarTestData{Current: Date{Year: 2026, Month: time.June, Day: 2}}
+	markup, err := calendar.renderMonth(nil, data, 2026, time.June)
 	if err != nil {
 		t.Fatalf("renderMonth() error = %v", err)
 	}

@@ -13,6 +13,7 @@ import (
 const (
 	callbackPrefix       = "tfw" // telegoflow widget
 	callbackSeparator    = ":"
+	callbackBaseParts    = 3
 	maxCallbackDataBytes = 64
 )
 
@@ -25,24 +26,27 @@ type Callback struct {
 
 // EncodeCallback encodes widget callback data and validates the Telegram 64-byte callback_data limit.
 func EncodeCallback(widgetID, action string, args ...string) (string, error) {
-	if err := validateSegment("widget ID", widgetID, true); err != nil {
+	if err := ValidateID(widgetID); err != nil {
 		return "", err
 	}
-	if err := validateSegment("action", action, false); err != nil {
+	if err := validateSegment("action", action); err != nil {
 		return "", err
 	}
 	for i, arg := range args {
-		if err := validateSegment(fmt.Sprintf("arg %d", i), arg, false); err != nil {
+		if err := validateSegment(fmt.Sprintf("arg %d", i), arg); err != nil {
 			return "", err
 		}
 	}
 
-	parts := make([]string, 0, 3+len(args))
+	parts := make([]string, 0, callbackBaseParts+len(args))
 	parts = append(parts, callbackPrefix, widgetID, action)
 	parts = append(parts, args...)
 	data := strings.Join(parts, callbackSeparator)
 	if len([]byte(data)) > maxCallbackDataBytes {
-		return "", fmt.Errorf("widget: callback data is %d bytes, maximum is %d", len([]byte(data)), maxCallbackDataBytes)
+		return "", fmt.Errorf(
+			"widget: callback data is %d bytes, maximum is %d",
+			len([]byte(data)), maxCallbackDataBytes,
+		)
 	}
 	return data, nil
 }
@@ -70,24 +74,24 @@ func CallbackPredicate(widgetID string) th.Predicate {
 
 // ValidateID validates a widget ID segment.
 func ValidateID(id string) error {
-	return validateSegment("widget ID", id, true)
+	if err := validateSegment("widget ID", id); err != nil {
+		return err
+	}
+	for _, r := range id {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-' {
+			continue
+		}
+		return fmt.Errorf("widget: widget ID %q contains invalid character %q", id, r)
+	}
+	return nil
 }
 
-func validateSegment(name, value string, widgetID bool) error {
+func validateSegment(name, value string) error {
 	if value == "" {
 		return fmt.Errorf("widget: %s must not be empty", name)
 	}
 	if strings.Contains(value, callbackSeparator) {
 		return fmt.Errorf("widget: %s must not contain %q", name, callbackSeparator)
-	}
-	if !widgetID {
-		return nil
-	}
-	for _, r := range value {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-' {
-			continue
-		}
-		return fmt.Errorf("widget: widget ID %q contains invalid character %q", value, r)
 	}
 	return nil
 }

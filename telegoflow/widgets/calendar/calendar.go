@@ -1,6 +1,7 @@
 package calendar
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -19,10 +20,15 @@ const (
 	calendarActionDate   = "d"
 	calendarActionToday  = "t"
 	calendarActionCancel = "x"
+
+	calendarRowsCap     = 9
+	calendarMonthDigits = 6
+	calendarDateDigits  = 8
+	daysPerWeek         = 7
 )
 
-// CalendarBuilder builds a Calendar widget.
-type CalendarBuilder[T any] struct {
+// Builder builds a Calendar widget.
+type Builder[T any] struct {
 	id        string
 	weekStart time.Weekday
 	location  *time.Location
@@ -39,24 +45,24 @@ type CalendarBuilder[T any] struct {
 	onCancel func(ctx *tf.Context[T]) error
 }
 
-// NewCalendar creates a calendar widget builder.
-func New[T any](id string) *CalendarBuilder[T] {
-	return &CalendarBuilder[T]{
+// New creates a calendar widget builder.
+func New[T any](id string) *Builder[T] {
+	return &Builder[T]{
 		id:        id,
 		weekStart: time.Monday,
-		location:  time.Local,
+		location:  time.UTC,
 		labels:    EnglishLabels(),
 	}
 }
 
 // WeekStart sets the first day of calendar week.
-func (b *CalendarBuilder[T]) WeekStart(day time.Weekday) *CalendarBuilder[T] {
+func (b *Builder[T]) WeekStart(day time.Weekday) *Builder[T] {
 	b.weekStart = day
 	return b
 }
 
 // Location sets location used for Today and Date.Time conversions.
-func (b *CalendarBuilder[T]) Location(loc *time.Location) *CalendarBuilder[T] {
+func (b *Builder[T]) Location(loc *time.Location) *Builder[T] {
 	if loc != nil {
 		b.location = loc
 	}
@@ -64,21 +70,21 @@ func (b *CalendarBuilder[T]) Location(loc *time.Location) *CalendarBuilder[T] {
 }
 
 // Min disables dates before date.
-func (b *CalendarBuilder[T]) Min(date Date) *CalendarBuilder[T] {
+func (b *Builder[T]) Min(date Date) *Builder[T] {
 	b.min = date
 	b.hasMin = !date.IsZero()
 	return b
 }
 
 // Max disables dates after date.
-func (b *CalendarBuilder[T]) Max(date Date) *CalendarBuilder[T] {
+func (b *Builder[T]) Max(date Date) *Builder[T] {
 	b.max = date
 	b.hasMax = !date.IsZero()
 	return b
 }
 
 // Labels sets calendar labels.
-func (b *CalendarBuilder[T]) Labels(labels Labels) *CalendarBuilder[T] {
+func (b *Builder[T]) Labels(labels Labels) *Builder[T] {
 	b.labels = labels
 	return b
 }
@@ -87,41 +93,41 @@ func (b *CalendarBuilder[T]) Labels(labels Labels) *CalendarBuilder[T] {
 //
 // The current date is used to open the calendar on that month and format the day
 // with Labels.SelectedDay.
-func (b *CalendarBuilder[T]) Current(current func(data *T) (Date, bool)) *CalendarBuilder[T] {
+func (b *Builder[T]) Current(current func(data *T) (Date, bool)) *Builder[T] {
 	b.current = current
 	return b
 }
 
 // Disabled sets a function that disables individual dates.
-func (b *CalendarBuilder[T]) Disabled(disabled func(ctx *tf.Context[T], date Date) bool) *CalendarBuilder[T] {
+func (b *Builder[T]) Disabled(disabled func(ctx *tf.Context[T], date Date) bool) *Builder[T] {
 	b.disabled = disabled
 	return b
 }
 
 // OnSelect sets a handler called when user selects a date.
-func (b *CalendarBuilder[T]) OnSelect(handler func(ctx *tf.Context[T], date Date) error) *CalendarBuilder[T] {
+func (b *Builder[T]) OnSelect(handler func(ctx *tf.Context[T], date Date) error) *Builder[T] {
 	b.onSelect = handler
 	return b
 }
 
 // OnCancel sets a handler called when user presses the cancel button.
-func (b *CalendarBuilder[T]) OnCancel(handler func(ctx *tf.Context[T]) error) *CalendarBuilder[T] {
+func (b *Builder[T]) OnCancel(handler func(ctx *tf.Context[T]) error) *Builder[T] {
 	b.onCancel = handler
 	return b
 }
 
 // Build validates and creates a Calendar widget.
-func (b *CalendarBuilder[T]) Build() (*Calendar[T], error) {
+func (b *Builder[T]) Build() (*Calendar[T], error) {
 	if err := widget.ValidateID(b.id); err != nil {
 		return nil, err
 	}
 	if b.hasMin && b.hasMax && b.min.after(b.max) {
-		return nil, fmt.Errorf("widgets: calendar min date must not be after max date")
+		return nil, errors.New("widgets: calendar min date must not be after max date")
 	}
 	labels := b.labels.normalize()
 	loc := b.location
 	if loc == nil {
-		loc = time.Local
+		loc = time.UTC
 	}
 	return &Calendar[T]{
 		id:        b.id,
@@ -155,6 +161,11 @@ type Calendar[T any] struct {
 	disabled func(ctx *tf.Context[T], date Date) bool
 	onSelect func(ctx *tf.Context[T], date Date) error
 	onCancel func(ctx *tf.Context[T]) error
+}
+
+type dateSelection struct {
+	date Date
+	ok   bool
 }
 
 // ID returns widget ID.
@@ -207,8 +218,6 @@ func (c *Calendar[T]) Handle(ctx *tf.Context[T]) error {
 	}
 
 	switch callback.Action {
-	case calendarActionNoop:
-		return nil
 	case calendarActionPrev, calendarActionNext:
 		if len(callback.Args) != 1 {
 			return nil
@@ -221,7 +230,10 @@ func (c *Calendar[T]) Handle(ctx *tf.Context[T]) error {
 		if err != nil {
 			return err
 		}
-		return widget.EditCallbackView(ctx, widget.View{Text: widget.CallbackMessageText(query, "Calendar"), Markup: markup})
+		return widget.EditCallbackView(ctx, widget.View{
+			Text:   widget.CallbackMessageText(query, "Calendar"),
+			Markup: markup,
+		})
 	case calendarActionDate, calendarActionToday:
 		if len(callback.Args) != 1 {
 			return nil
@@ -254,65 +266,138 @@ func (c *Calendar[T]) initialMonth(data *T) (int, time.Month) {
 	return now.Year(), now.Month()
 }
 
-func (c *Calendar[T]) renderMonth(ctx *tf.Context[T], data *T, year int, month time.Month) (*telego.InlineKeyboardMarkup, error) {
+func (c *Calendar[T]) renderMonth(
+	ctx *tf.Context[T],
+	data *T,
+	year int,
+	month time.Month,
+) (*telego.InlineKeyboardMarkup, error) {
 	first := time.Date(year, month, 1, 0, 0, 0, 0, c.location)
 	year, month = first.Year(), first.Month()
 
-	rows := make([][]telego.InlineKeyboardButton, 0, 9)
+	rows := make([][]telego.InlineKeyboardButton, 0, calendarRowsCap)
+	rows = append(rows, c.renderHeader(first), c.renderWeekdays())
 
+	dayRows, err := c.renderDays(ctx, data, first, year, month)
+	if err != nil {
+		return nil, err
+	}
+	rows = append(rows, dayRows...)
+
+	footer, err := c.renderFooter(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows = append(rows, footer)
+
+	return tu.InlineKeyboard(rows...), nil
+}
+
+func (c *Calendar[T]) renderHeader(first time.Time) []telego.InlineKeyboardButton {
+	year, month := first.Year(), first.Month()
 	prevMonth := first.AddDate(0, -1, 0)
 	nextMonth := first.AddDate(0, 1, 0)
 	title := fmt.Sprintf("%s %d", c.labels.Months[int(month)-1], year)
-	rows = append(rows, tu.InlineKeyboardRow(
+
+	return tu.InlineKeyboardRow(
 		c.navButton(c.labels.PrevMonth, calendarActionPrev, prevMonth),
 		c.noopButton(title),
 		c.navButton(c.labels.NextMonth, calendarActionNext, nextMonth),
-	))
+	)
+}
 
-	weekdayRow := make([]telego.InlineKeyboardButton, 0, 7)
-	for i := 0; i < 7; i++ {
-		weekday := time.Weekday((int(c.weekStart) + i) % 7)
-		weekdayRow = append(weekdayRow, c.noopButton(c.labels.Weekdays[int(weekday)]))
+func (c *Calendar[T]) renderWeekdays() []telego.InlineKeyboardButton {
+	row := make([]telego.InlineKeyboardButton, 0, daysPerWeek)
+	for i := range daysPerWeek {
+		weekday := time.Weekday((int(c.weekStart) + i) % daysPerWeek)
+		row = append(row, c.noopButton(c.labels.Weekdays[int(weekday)]))
 	}
-	rows = append(rows, weekdayRow)
+	return row
+}
 
-	current, hasCurrent := Date{}, false
-	if c.current != nil {
-		current, hasCurrent = c.current(data)
-	}
+func (c *Calendar[T]) renderDays(
+	ctx *tf.Context[T],
+	data *T,
+	first time.Time,
+	year int,
+	month time.Month,
+) ([][]telego.InlineKeyboardButton, error) {
+	current := c.currentDate(data)
+	daysInMonth := daysIn(year, month, c.location)
+	firstOffset := (int(first.Weekday()) - int(c.weekStart) + daysPerWeek) % daysPerWeek
 
-	daysInMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, c.location).Day()
-	firstOffset := (int(first.Weekday()) - int(c.weekStart) + 7) % 7
+	rows := make([][]telego.InlineKeyboardButton, 0, weeksInMonth(daysInMonth, firstOffset))
 	day := 1
 	for day <= daysInMonth {
-		row := make([]telego.InlineKeyboardButton, 0, 7)
-		for col := 0; col < 7; col++ {
-			if len(rows) == 2 && col < firstOffset || day > daysInMonth {
-				row = append(row, c.noopButton(c.labels.EmptyDay))
-				continue
-			}
-
-			date := Date{Year: year, Month: month, Day: day}
-			label := strconv.Itoa(day)
-			if hasCurrent && date.equal(current) {
-				label = fmt.Sprintf(c.labels.SelectedDay, label)
-			}
-			if !c.dateInRange(date) {
-				row = append(row, c.noopButton(c.labels.EmptyDay))
-			} else if !c.dateAllowed(ctx, date) {
-				row = append(row, c.noopButton(label))
-			} else {
-				button, err := c.dateButton(label, date)
-				if err != nil {
-					return nil, err
-				}
-				row = append(row, button)
-			}
-			day++
+		row, nextDay, err := c.renderWeek(ctx, year, month, day, daysInMonth, firstOffset, current)
+		if err != nil {
+			return nil, err
 		}
 		rows = append(rows, row)
+		day = nextDay
+		firstOffset = 0
+	}
+	return rows, nil
+}
+
+func (c *Calendar[T]) currentDate(data *T) dateSelection {
+	if c.current == nil {
+		return dateSelection{}
+	}
+	date, ok := c.current(data)
+	return dateSelection{date: date, ok: ok}
+}
+
+func (c *Calendar[T]) renderWeek(
+	ctx *tf.Context[T],
+	year int,
+	month time.Month,
+	day int,
+	daysInMonth int,
+	firstOffset int,
+	current dateSelection,
+) ([]telego.InlineKeyboardButton, int, error) {
+	row := make([]telego.InlineKeyboardButton, 0, daysPerWeek)
+	for col := range daysPerWeek {
+		if col < firstOffset || day > daysInMonth {
+			row = append(row, c.noopButton(c.labels.EmptyDay))
+			continue
+		}
+
+		button, err := c.renderDayButton(ctx, year, month, day, current)
+		if err != nil {
+			return nil, 0, err
+		}
+		row = append(row, button)
+		day++
+	}
+	return row, day, nil
+}
+
+func (c *Calendar[T]) renderDayButton(
+	ctx *tf.Context[T],
+	year int,
+	month time.Month,
+	day int,
+	current dateSelection,
+) (telego.InlineKeyboardButton, error) {
+	date := Date{Year: year, Month: month, Day: day}
+	label := strconv.Itoa(day)
+	if current.ok && date.equal(current.date) {
+		label = fmt.Sprintf(c.labels.SelectedDay, label)
 	}
 
+	switch {
+	case !c.dateInRange(date):
+		return c.noopButton(c.labels.EmptyDay), nil
+	case !c.dateAllowed(ctx, date):
+		return c.noopButton(label), nil
+	default:
+		return c.dateButton(label, date)
+	}
+}
+
+func (c *Calendar[T]) renderFooter(ctx *tf.Context[T]) ([]telego.InlineKeyboardButton, error) {
 	today := DateFromTime(time.Now().In(c.location))
 	footer := []telego.InlineKeyboardButton{}
 	if c.dateAllowed(ctx, today) {
@@ -327,9 +412,7 @@ func (c *Calendar[T]) renderMonth(ctx *tf.Context[T], data *T, year int, month t
 		return nil, err
 	}
 	footer = append(footer, cancelButton)
-	rows = append(rows, footer)
-
-	return tu.InlineKeyboard(rows...), nil
+	return footer, nil
 }
 
 func (c *Calendar[T]) navButton(label, action string, month time.Time) telego.InlineKeyboardButton {
@@ -360,7 +443,10 @@ func (c *Calendar[T]) actionButton(label, action string, args ...string) (telego
 }
 
 func (c *Calendar[T]) noopButton(label string) telego.InlineKeyboardButton {
-	data, _ := widget.EncodeCallback(c.id, calendarActionNoop)
+	data, err := widget.EncodeCallback(c.id, calendarActionNoop)
+	if err != nil {
+		return tu.InlineKeyboardButton(label)
+	}
 	return tu.InlineKeyboardButton(label).WithCallbackData(data)
 }
 
@@ -389,7 +475,7 @@ func (c *Calendar[T]) dateInRange(date Date) bool {
 
 func (c *Calendar[T]) monthAllowed(year int, month time.Month) bool {
 	first := Date{Year: year, Month: month, Day: 1}
-	last := Date{Year: year, Month: month, Day: time.Date(year, month+1, 0, 0, 0, 0, 0, c.location).Day()}
+	last := Date{Year: year, Month: month, Day: daysIn(year, month, c.location)}
 	if c.hasMin && last.before(c.min) {
 		return false
 	}
@@ -403,8 +489,17 @@ func formatCalendarMonth(year int, month time.Month) string {
 	return fmt.Sprintf("%04d%02d", year, int(month))
 }
 
+func daysIn(year int, month time.Month, loc *time.Location) int {
+	firstOfNextMonth := time.Date(year, month+1, 1, 0, 0, 0, 0, loc)
+	return firstOfNextMonth.AddDate(0, 0, -1).Day()
+}
+
+func weeksInMonth(daysInMonth, firstOffset int) int {
+	return (daysInMonth + firstOffset + daysPerWeek - 1) / daysPerWeek
+}
+
 func parseCalendarMonth(value string) (int, time.Month, bool) {
-	if len(value) != 6 {
+	if len(value) != calendarMonthDigits {
 		return 0, 0, false
 	}
 	year, err := strconv.Atoi(value[:4])
@@ -412,7 +507,7 @@ func parseCalendarMonth(value string) (int, time.Month, bool) {
 		return 0, 0, false
 	}
 	monthInt, err := strconv.Atoi(value[4:])
-	if err != nil || monthInt < 1 || monthInt > 12 {
+	if err != nil || monthInt < 1 || monthInt > monthsPerYear {
 		return 0, 0, false
 	}
 	return year, time.Month(monthInt), true
@@ -423,7 +518,7 @@ func formatCalendarDate(date Date) string {
 }
 
 func parseCalendarDate(value string) (Date, bool) {
-	if len(value) != 8 {
+	if len(value) != calendarDateDigits {
 		return Date{}, false
 	}
 	year, err := strconv.Atoi(value[:4])
@@ -431,7 +526,7 @@ func parseCalendarDate(value string) (Date, bool) {
 		return Date{}, false
 	}
 	monthInt, err := strconv.Atoi(value[4:6])
-	if err != nil || monthInt < 1 || monthInt > 12 {
+	if err != nil || monthInt < 1 || monthInt > monthsPerYear {
 		return Date{}, false
 	}
 	day, err := strconv.Atoi(value[6:])

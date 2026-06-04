@@ -17,7 +17,7 @@ func DateFromTime(t time.Time) Date {
 // Time converts Date to time at midnight in the provided location.
 func (d Date) Time(loc *time.Location) time.Time {
 	if loc == nil {
-		loc = time.Local
+		loc = time.UTC
 	}
 	return time.Date(d.Year, d.Month, d.Day, 0, 0, 0, 0, loc)
 }
@@ -29,7 +29,7 @@ func (d Date) IsZero() bool {
 
 // Format formats Date using time layout.
 func (d Date) Format(layout string) string {
-	return d.Time(time.Local).Format(layout)
+	return d.Time(time.UTC).Format(layout)
 }
 
 func (d Date) before(other Date) bool {

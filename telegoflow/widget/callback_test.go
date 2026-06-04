@@ -21,8 +21,11 @@ func TestEncodeDecodeCallback(t *testing.T) {
 	if !ok {
 		t.Fatal("DecodeCallback() did not decode valid callback")
 	}
-	if callback.WidgetID != "calendar" || callback.Action != "d" || len(callback.Args) != 1 || callback.Args[0] != "20260602" {
+	if callback.WidgetID != "calendar" || callback.Action != "d" {
 		t.Fatalf("DecodeCallback() = %+v", callback)
+	}
+	if len(callback.Args) != 1 || callback.Args[0] != "20260602" {
+		t.Fatalf("DecodeCallback() args = %v", callback.Args)
 	}
 }
 

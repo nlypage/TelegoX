@@ -1,7 +1,7 @@
 package widget
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/mymmrac/telego"
@@ -35,20 +35,21 @@ func SendView[T any](ctx *tf.Context[T], view View) error {
 func EditCallbackView[T any](ctx *tf.Context[T], view View) error {
 	query := ctx.CallbackQuery()
 	if query == nil {
-		return fmt.Errorf("widget: callback query is missing")
+		return errors.New("widget: callback query is missing")
 	}
 
 	params := &telego.EditMessageTextParams{
 		Text:        view.Text,
 		ReplyMarkup: view.Markup,
 	}
-	if query.InlineMessageID != "" {
+	switch {
+	case query.InlineMessageID != "":
 		params.InlineMessageID = query.InlineMessageID
-	} else if query.Message != nil {
+	case query.Message != nil:
 		params.ChatID = query.Message.GetChat().ChatID()
 		params.MessageID = query.Message.GetMessageID()
-	} else {
-		return fmt.Errorf("widget: callback message is missing")
+	default:
+		return errors.New("widget: callback message is missing")
 	}
 
 	_, err := ctx.Bot().EditMessageText(ctx, params)

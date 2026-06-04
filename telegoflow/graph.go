@@ -50,7 +50,7 @@ func (f *Flow[T]) Graph() string {
 	if len(unreachable) > 0 {
 		writeGraphString(&builder, "\nunreachable\n")
 		for i, stepID := range unreachable {
-			f.writeGraphStep(&builder, stepID, "", graphConnector(i == len(unreachable)-1), visited, stack)
+			f.writeGraphStep(&builder, stepID, "", graphConnector(i, len(unreachable)), visited, stack)
 		}
 	}
 
@@ -100,12 +100,12 @@ func (f *Flow[T]) writeGraphStep(
 	if step.canComplete {
 		edgeCount++
 		writeGraphString(builder, nextPrefix)
-		writeGraphString(builder, graphConnector(edgeCount == 1))
+		writeGraphString(builder, graphConnector(0, edgeCount))
 		writeGraphString(builder, graphExit)
 		writeGraphString(builder, "\n")
 	}
 	for i, transition := range transitions {
-		f.writeGraphStep(builder, transition, nextPrefix, graphConnector(i == len(transitions)-1), visited, stack)
+		f.writeGraphStep(builder, transition, nextPrefix, graphConnector(i, len(transitions)), visited, stack)
 	}
 }
 
@@ -118,8 +118,8 @@ func (s *Step[T]) transitions() []string {
 	return transitions
 }
 
-func graphConnector(last bool) string {
-	if last {
+func graphConnector(index, total int) string {
+	if index == total-1 {
 		return graphLast
 	}
 	return graphBranch
