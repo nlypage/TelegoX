@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/mymmrac/telego"
-	th "github.com/mymmrac/telego/telegohandler"
+	"github.com/nlypage/telegox"
+	th "github.com/nlypage/telegox/telegohandler"
 )
 
 // FlowRunner is implemented by typed flows and accepted by [Manager.Register].

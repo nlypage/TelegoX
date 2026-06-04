@@ -1,6 +1,6 @@
 package telegoflow
 
-import "github.com/mymmrac/telego"
+import "github.com/nlypage/telegox"
 
 // KeyFunc extracts a session key from an update.
 type KeyFunc func(update telego.Update) (SessionKey, bool)

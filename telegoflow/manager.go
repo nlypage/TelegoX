@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mymmrac/telego"
-	th "github.com/mymmrac/telego/telegohandler"
+	"github.com/nlypage/telegox"
+	th "github.com/nlypage/telegox/telegohandler"
 )
 
 // Manager coordinates flows, sessions, and telegohandler integration.

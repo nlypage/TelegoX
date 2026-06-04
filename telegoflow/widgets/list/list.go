@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/mymmrac/telego"
-	tf "github.com/mymmrac/telego/telegoflow"
-	"github.com/mymmrac/telego/telegoflow/widget"
-	th "github.com/mymmrac/telego/telegohandler"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	tf "github.com/nlypage/telegox/telegoflow"
+	"github.com/nlypage/telegox/telegoflow/widget"
+	th "github.com/nlypage/telegox/telegohandler"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 const (

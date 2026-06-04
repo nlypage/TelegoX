@@ -3,8 +3,8 @@ package telegoflow
 import (
 	"context"
 
-	"github.com/mymmrac/telego"
-	th "github.com/mymmrac/telego/telegohandler"
+	"github.com/nlypage/telegox"
+	th "github.com/nlypage/telegox/telegohandler"
 )
 
 // Handler handles a flow step or lifecycle event.

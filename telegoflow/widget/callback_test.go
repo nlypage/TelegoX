@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mymmrac/telego"
+	"github.com/nlypage/telegox"
 )
 
 func TestEncodeDecodeCallback(t *testing.T) {

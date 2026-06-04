@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mymmrac/telego"
-	tf "github.com/mymmrac/telego/telegoflow"
-	cal "github.com/mymmrac/telego/telegoflow/widgets/calendar"
-	lst "github.com/mymmrac/telego/telegoflow/widgets/list"
-	th "github.com/mymmrac/telego/telegohandler"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	tf "github.com/nlypage/telegox/telegoflow"
+	cal "github.com/nlypage/telegox/telegoflow/widgets/calendar"
+	lst "github.com/nlypage/telegox/telegoflow/widgets/list"
+	th "github.com/nlypage/telegox/telegohandler"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 // BookingData is typed flow session data. Widgets don't own business state:

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/mymmrac/telego"
-	tf "github.com/mymmrac/telego/telegoflow"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	tf "github.com/nlypage/telegox/telegoflow"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 // TextFunc builds a message text for a widget render.

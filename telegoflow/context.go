@@ -3,8 +3,8 @@ package telegoflow
 import (
 	"encoding/json"
 
-	"github.com/mymmrac/telego"
-	th "github.com/mymmrac/telego/telegohandler"
+	"github.com/nlypage/telegox"
+	th "github.com/nlypage/telegox/telegohandler"
 )
 
 // Context is passed to flow handlers.

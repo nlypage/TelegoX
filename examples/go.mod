@@ -11,7 +11,7 @@ require (
 
 // Use the local parent module so examples can import packages added in this
 // repository before they are available in the latest released telego version.
-replace github.com/mymmrac/telego => ..
+replace github.com/nlypage/telegox => ..
 
 require (
 	github.com/andybalholm/brotli v1.2.1 // indirect

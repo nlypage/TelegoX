@@ -3,7 +3,7 @@ package list
 import (
 	"testing"
 
-	tf "github.com/mymmrac/telego/telegoflow"
+	tf "github.com/nlypage/telegox/telegoflow"
 )
 
 type testData struct {
