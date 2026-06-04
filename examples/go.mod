@@ -1,10 +1,10 @@
-module github.com/mymmrac/telego/examples
+module github.com/nlypage/telegox/examples
 
 go 1.25.7
 
 require (
 	github.com/gofiber/fiber/v3 v3.3.0
-	github.com/mymmrac/telego v1.9.0
+	github.com/nlypage/telegox v1.9.0
 	github.com/valyala/fasthttp v1.71.0
 	golang.ngrok.com/ngrok v1.13.0
 )

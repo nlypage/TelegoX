@@ -6,8 +6,8 @@ import (
 	"os"
 	"sync/atomic"
 
-	"github.com/mymmrac/telego"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 func main() {

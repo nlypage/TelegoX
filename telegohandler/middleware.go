@@ -3,7 +3,7 @@ package telegohandler
 import (
 	"time"
 
-	"github.com/mymmrac/telego"
+	"github.com/nlypage/telegox"
 )
 
 // PanicRecovery returns a middleware that will recover handler from panic

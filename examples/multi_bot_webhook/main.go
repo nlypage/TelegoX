@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/mymmrac/telego"
+	"github.com/nlypage/telegox"
 )
 
 func main() {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/mymmrac/telego"
+	"github.com/nlypage/telegox"
 )
 
 func TestWithErrorHandler(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/mymmrac/telego/internal/json"
+	"github.com/nlypage/telegox/internal/json"
 )
 
 func TestSetMarshal(t *testing.T) {

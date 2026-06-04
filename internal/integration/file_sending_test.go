@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mymmrac/telego"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nlypage/telegox"
+	tu "github.com/nlypage/telegox/telegoutil"
 )
 
 func TestFileSending(t *testing.T) {

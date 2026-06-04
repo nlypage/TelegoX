@@ -7,7 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/mymmrac/telego"
+	"github.com/nlypage/telegox"
 )
 
 func main() {

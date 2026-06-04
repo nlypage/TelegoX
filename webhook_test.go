@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/mymmrac/telego/internal/json"
-	ta "github.com/mymmrac/telego/telegoapi"
+	"github.com/nlypage/telegox/internal/json"
+	ta "github.com/nlypage/telegox/telegoapi"
 )
 
 func TestBot_UpdatesViaWebhook(t *testing.T) {

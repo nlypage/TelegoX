@@ -11,8 +11,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/mymmrac/telego"
-	th "github.com/mymmrac/telego/telegohandler"
+	"github.com/nlypage/telegox"
+	th "github.com/nlypage/telegox/telegohandler"
 )
 
 func TestForwardMessages(t *testing.T) {
