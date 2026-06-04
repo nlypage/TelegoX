@@ -47,8 +47,21 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	if err = flows.Register(registration); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	// Commands that should work inside a flow should be registered before flow middleware.
+	// /start re-enters the current step when a session exists, otherwise it starts a new flow.
+	bh.Handle(func(ctx *th.Context, update telego.Update) error {
+		entered, err := flows.Enter(ctx, update)
+		if err != nil || entered {
+			return err
+		}
+		return registration.Start(ctx, update)
+	}, th.CommandEqual("start"))
+
 	bh.Handle(func(ctx *th.Context, update telego.Update) error {
 		_, hasSession, err := flows.ActiveSession(ctx, update)
 		if err != nil {
@@ -73,14 +86,6 @@ func main() {
 
 	// Active sessions are handled by flow middleware. If no session is active, processing continues to next handlers.
 	bh.Use(flows.Middleware())
-
-	// Register flow and start it with /start.
-	if err = flows.Register(registration); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	bh.Handle(registration.Start, th.CommandEqual("start"))
 
 	// Fallback for regular messages when no flow is active.
 	bh.HandleMessage(func(ctx *th.Context, msg telego.Message) error {
