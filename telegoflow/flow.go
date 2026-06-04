@@ -50,12 +50,20 @@ func (f *Flow[T]) ID() string {
 }
 
 // Start starts this flow with a zero value of T as session data.
+//
+// If the same session key already has an active session, Start replaces it with
+// a new session for this flow and enters the start step. The replaced session's
+// OnCancel hook is not called. Register interrupt commands before Manager.Middleware
+// when they should restart or override active flows.
 func (f *Flow[T]) Start(ctx *th.Context, update telego.Update) error {
 	var data T
 	return f.startSession(ctx, update, data)
 }
 
 // StartWithData returns a telegohandler handler that starts this flow with the provided initial data.
+//
+// Like Start, it replaces any active session for the same session key without
+// calling the replaced session's OnCancel hook.
 func (f *Flow[T]) StartWithData(data T) th.Handler {
 	return func(ctx *th.Context, update telego.Update) error {
 		return f.startSession(ctx, update, data)

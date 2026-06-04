@@ -217,6 +217,124 @@ func TestManager_Cancel(t *testing.T) {
 	assert.True(t, cancelCalled)
 }
 
+func TestManager_Enter(t *testing.T) {
+	storage := NewMemoryStorage()
+	manager := NewManager(storage)
+	key := SessionKey{ChatID: 123, UserID: 456}
+	entered := 0
+
+	flow, err := New[testData]("flow").
+		Steps(
+			NewStep[testData]("start"),
+			NewStep[testData]("view").
+				Enter(func(ctx *Context[testData]) error {
+					entered++
+					assert.Equal(t, "saved", ctx.Data().Name)
+					assert.Equal(t, "view", ctx.StepID())
+					return nil
+				}),
+		).
+		Build()
+	require.NoError(t, err)
+	require.NoError(t, manager.Register(flow))
+
+	active, err := manager.Enter(&th.Context{}, messageUpdate("/start"))
+	require.NoError(t, err)
+	assert.False(t, active)
+	assert.Equal(t, 0, entered)
+
+	data, err := json.Marshal(testData{Name: "saved"})
+	require.NoError(t, err)
+	require.NoError(t, storage.SaveSession(t.Context(), &SessionState{
+		Key:         key,
+		FlowID:      "flow",
+		CurrentStep: "view",
+		Data:        data,
+	}))
+
+	active, err = manager.Enter(&th.Context{}, messageUpdate("/start"))
+	require.NoError(t, err)
+	assert.True(t, active)
+	assert.Equal(t, 1, entered)
+}
+
+func TestManager_EnterErrors(t *testing.T) {
+	t.Run("no_key", func(t *testing.T) {
+		manager := NewManager(NewMemoryStorage())
+		active, err := manager.Enter(&th.Context{}, telego.Update{Poll: &telego.Poll{ID: "poll"}})
+
+		var keyErr NoSessionKeyError
+		require.ErrorAs(t, err, &keyErr)
+		assert.False(t, active)
+	})
+
+	t.Run("unknown_flow", func(t *testing.T) {
+		storage := NewMemoryStorage()
+		manager := NewManager(storage)
+		require.NoError(t, storage.SaveSession(t.Context(), &SessionState{
+			Key:    SessionKey{ChatID: 123, UserID: 456},
+			FlowID: "missing",
+			Data:   json.RawMessage(`{}`),
+		}))
+
+		active, err := manager.Enter(&th.Context{}, messageUpdate("/start"))
+
+		var flowErr FlowNotFoundError
+		require.ErrorAs(t, err, &flowErr)
+		assert.False(t, active)
+		assert.Equal(t, "missing", flowErr.FlowID)
+	})
+}
+
+func TestManager_Reset(t *testing.T) {
+	storage := NewMemoryStorage()
+	manager := NewManager(storage)
+	cancelCalled := false
+	key := SessionKey{ChatID: 123, UserID: 456}
+
+	flow, err := New[testData]("flow").
+		Steps(NewStep[testData]("start")).
+		OnCancel(func(ctx *Context[testData]) error {
+			cancelCalled = true
+			return nil
+		}).
+		Build()
+	require.NoError(t, err)
+	require.NoError(t, manager.Register(flow))
+
+	data, err := json.Marshal(testData{Name: "saved"})
+	require.NoError(t, err)
+	require.NoError(t, storage.SaveSession(t.Context(), &SessionState{
+		Key:         key,
+		FlowID:      "flow",
+		CurrentStep: "start",
+		Data:        data,
+	}))
+
+	deleted, err := manager.Reset(&th.Context{}, messageUpdate("/start"))
+	require.NoError(t, err)
+	assert.True(t, deleted)
+	assert.False(t, cancelCalled)
+
+	_, _, ok := loadData[testData](t, storage, key)
+	assert.False(t, ok)
+
+	deleted, err = manager.Reset(&th.Context{}, messageUpdate("/start"))
+	require.NoError(t, err)
+	assert.False(t, deleted)
+}
+
+func TestManager_ResetErrors(t *testing.T) {
+	t.Run("no_key", func(t *testing.T) {
+		manager := NewManager(NewMemoryStorage())
+		deleted, err := manager.Reset(&th.Context{}, telego.Update{Poll: &telego.Poll{ID: "poll"}})
+
+		var keyErr NoSessionKeyError
+		require.ErrorAs(t, err, &keyErr)
+		assert.False(t, deleted)
+	})
+}
+
 func TestManager_CancelErrors(t *testing.T) {
 	t.Run("no_key", func(t *testing.T) {
 		manager := NewManager(NewMemoryStorage())

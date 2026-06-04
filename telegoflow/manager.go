@@ -132,6 +132,66 @@ func (m *Manager) Cancel(ctx *th.Context, update telego.Update) error {
 	return flow.cancelSession(ctx, update, state)
 }
 
+// Reset deletes the active session for this update without running flow lifecycle hooks.
+//
+// It returns true when a session existed and was deleted. Unlike Cancel, Reset doesn't
+// call the flow's OnCancel hook and doesn't require the referenced flow to be registered.
+// Use it for global commands that should silently interrupt any active flow and then
+// show their own output.
+func (m *Manager) Reset(ctx *th.Context, update telego.Update) (bool, error) {
+	key, ok := m.keyFunc(update)
+	if !ok {
+		return false, NoSessionKeyError{}
+	}
+
+	lock := m.lockFor(key)
+	lock.lock()
+	defer lock.unlock()
+
+	_, exists, err := m.storage.LoadSession(ctx.Context(), key)
+	if err != nil || !exists {
+		return false, err
+	}
+	if err = m.storage.DeleteSession(ctx.Context(), key); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// Enter runs the enter handler of the active session's current step.
+//
+// It returns true when an active, non-expired session existed and its current
+// step was entered. If there is no active session, it returns false and no error.
+// If the session is expired, Enter runs the flow's OnTimeout hook, deletes the
+// session, and returns false.
+//
+// Use Enter for global commands like /start that should show the current flow
+// view instead of treating the command as step input or restarting the flow.
+func (m *Manager) Enter(ctx *th.Context, update telego.Update) (bool, error) {
+	key, ok := m.keyFunc(update)
+	if !ok {
+		return false, NoSessionKeyError{}
+	}
+
+	lock := m.lockFor(key)
+	lock.lock()
+	defer lock.unlock()
+
+	state, exists, err := m.storage.LoadSession(ctx.Context(), key)
+	if err != nil || !exists {
+		return false, err
+	}
+
+	flow, ok := m.flows[state.FlowID]
+	if !ok {
+		return false, FlowNotFoundError{FlowID: state.FlowID}
+	}
+	if state.Expired(m.now()) {
+		return false, flow.timeoutSession(ctx, update, state)
+	}
+	return true, flow.enterSession(ctx, update, state)
+}
+
 // ActiveSession returns information about the active session for this update, if any.
 func (m *Manager) ActiveSession(ctx *th.Context, update telego.Update) (*SessionInfo, bool, error) {
 	key, ok := m.keyFunc(update)
